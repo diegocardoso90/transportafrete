@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TransportaFrete</title>
+
+<!-- ============================================================
+     PASSO 5: SUBSTITUA O BLOCO ABAIXO PELA SUA firebaseConfig
+     Você copia esse bloco no Firebase Console > Visão geral > </> 
+     ============================================================ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCxSd_s9Jygf52wcwo6J0hGZpCPCQ_yKIw",
+    authDomain: "transportafrete.firebaseapp.com",
+    projectId: "transportafrete",
+    storageBucket: "transportafrete.firebasestorage.app",
+    messagingSenderId: "395620298526",
+    appId: "1:395620298526:web:db3c1f1209b1e6d4f4630f"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._fns = { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy };
+  window._dbReady = true;
+  document.dispatchEvent(new Event('db-ready'));
+</script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f4;
+    --bg-card: #ffffff;
+    --bg-sec: #f1efe8;
+    --text: #1a1a19;
+    --text-sec: #5f5e5a;
+    --text-hint: #888780;
+    --border: rgba(0,0,0,0.12);
+    --border-med: rgba(0,0,0,0.2);
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+    --amber-light: #FAEEDA;
+    --amber-dark: #633806;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a;
+      --bg-card: #252523;
+      --bg-sec: #2c2c2a;
+      --text: #f0ede8;
+      --text-sec: #b4b2a9;
+      --text-hint: #888780;
+      --border: rgba(255,255,255,0.1);
+      --border-med: rgba(255,255,255,0.2);
+      --blue-light: #0c2d4a;
+      --blue: #378ADD;
+      --blue-dark: #85B7EB;
+      --green-light: #173404;
+      --green: #97C459;
+      --red-light: #3a1010;
+      --red: #F09595;
+      --amber-light: #2e1f00;
+      --amber-dark: #FAC775;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; min-height: 100vh; }
+  .page { display: none; }
+  .page.active { display: block; }
+  input, select, textarea { width: 100%; padding: 9px 12px; border: 0.5px solid var(--border-med); border-radius: var(--radius); background: var(--bg-card); color: var(--text); font-size: 14px; font-family: inherit; appearance: none; }
+  input:focus, select:focus { outline: none; box-shadow: 0 0 0 2px var(--blue); }
+  button { cursor: pointer; padding: 9px 16px; border: 0.5px solid var(--border-med); border-radius: var(--radius); background: transparent; color: var(--text); font-size: 14px; font-family: inherit; transition: background 0.12s, transform 0.1s; }
+  button:hover { background: var(--bg-sec); }
+  button:active { transform: scale(0.98); }
+  .btn-primary { background: var(--blue); color: var(--blue-light); border-color: var(--blue); }
+  .btn-primary:hover { background: var(--blue-dark); }
+  .btn-green { background: var(--green); color: var(--green-light); border-color: var(--green); }
+  .btn-green:hover { opacity: 0.9; }
+  .btn-red { background: var(--red); color: var(--red-light); border-color: var(--red); }
+  .card { background: var(--bg-card); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .metric { background: var(--bg-sec); border-radius: var(--radius); padding: 1rem; text-align: center; }
+  .metric-label { font-size: 12px; color: var(--text-sec); margin-bottom: 4px; }
+  .metric-value { font-size: 20px; font-weight: 500; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+  .badge-ok { background: var(--green-light); color: var(--green); }
+  .badge-pend { background: var(--amber-light); color: var(--amber-dark); }
+  .badge-err { background: var(--red-light); color: var(--red); }
+  .topbar { background: var(--bg-card); border-bottom: 0.5px solid var(--border); padding: 10px 1rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--blue); color: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; flex-shrink: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; color: var(--text-sec); font-weight: 400; border-bottom: 0.5px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 1rem; background: var(--bg-sec); padding: 4px; border-radius: var(--radius); overflow-x: auto; }
+  .tab { flex: 1; min-width: max-content; text-align: center; padding: 7px 12px; border-radius: var(--radius); font-size: 13px; cursor: pointer; border: none; background: transparent; color: var(--text-sec); white-space: nowrap; }
+  .tab.active { background: var(--bg-card); color: var(--text); border: 0.5px solid var(--border); font-weight: 500; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .form-group { margin-bottom: 10px; }
+  label { display: block; font-size: 12px; color: var(--text-sec); margin-bottom: 4px; }
+  .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; }
+  .alert-ok { background: var(--green-light); color: var(--green); }
+  .alert-err { background: var(--red-light); color: var(--red); }
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 0 1rem 2rem; }
+  .overflow-x { overflow-x: auto; }
+  @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+  /* Loading screen */
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; z-index: 999; }
+  #loading-screen .spinner { width: 28px; height: 28px; border-width: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Tela de carregamento -->
+<div id="loading-screen">
+  <div style="font-size:22px;font-weight:500;color:var(--blue)">TransportaFrete</div>
+  <div><span class="spinner"></span><span style="font-size:13px;color:var(--text-sec)">Conectando ao banco de dados...</span></div>
+</div>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="page-login" class="page">
+  <div style="max-width:380px;margin:4rem auto;padding:0 1rem">
+    <div style="text-align:center;margin-bottom:2rem">
+      <div style="width:52px;height:52px;background:var(--blue);border-radius:var(--radius-lg);margin:0 auto 12px;display:flex;align-items:center;justify-content:center">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E6F1FB" stroke-width="2"><rect x="1" y="3" width="22" height="18" rx="2"/><path d="M1 9h22M8 3v6M16 3v6"/></svg>
+      </div>
+      <h1 style="font-size:22px;font-weight:500">TransportaFrete</h1>
+      <p style="font-size:13px;color:var(--text-sec);margin-top:4px">Controle de fretes em tempo real</p>
+    </div>
+    <div class="card">
+      <div id="login-alert"></div>
+      <div class="form-group">
+        <label>Usuário</label>
+        <input id="login-user" type="text" placeholder="Digite seu usuário" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Senha</label>
+        <input id="login-pass" type="password" placeholder="Digite sua senha" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="btn-login" style="width:100%;margin-top:4px" onclick="doLogin()">Entrar</button>
+    </div>
+    <p style="font-size:11px;color:var(--text-hint);text-align:center;margin-top:12px">Primeiro acesso: admin / admin123</p>
+  </div>
+</div>
+
+<!-- ===================== MOTORISTA ===================== -->
+<div id="page-motorista" class="page">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="avatar" id="mot-avatar">MO</div>
+      <div>
+        <div style="font-size:14px;font-weight:500" id="mot-nome">Motorista</div>
+        <div style="font-size:11px;color:var(--text-sec)">Motorista</div>
+      </div>
+    </div>
+    <button onclick="logout()" style="font-size:12px;padding:6px 12px">Sair</button>
+  </div>
+  <div class="wrap" style="padding-top:1rem">
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1rem">
+      <div class="metric"><div class="metric-label">Total do mês</div><div class="metric-value" id="mot-total-mes">—</div></div>
+      <div class="metric"><div class="metric-label">Fretes no mês</div><div class="metric-value" id="mot-qtd-mes">—</div></div>
+      <div class="metric"><div class="metric-label">Pendente</div><div class="metric-value" id="mot-pend" style="color:var(--amber-dark)">—</div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:500;margin-bottom:12px">Histórico de fretes</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px"><label>De</label><input type="date" id="mot-de" onchange="renderMotFretes()"></div>
+        <div style="flex:1;min-width:120px"><label>Até</label><input type="date" id="mot-ate" onchange="renderMotFretes()"></div>
+        <div style="flex:1;min-width:100px"><label>Status</label>
+          <select id="mot-st" onchange="renderMotFretes()">
+            <option value="">Todos</option>
+            <option value="pago">Pago</option>
+            <option value="pendente">Pendente</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end"><button onclick="limparFiltroMot()" style="padding:9px 12px;font-size:12px">Limpar</button></div>
+      </div>
+      <div id="mot-tabela"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== GERENTE ===================== -->
+<div id="page-gerente" class="page">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="avatar" style="background:var(--green);color:var(--green-light)">GE</div>
+      <div>
+        <div style="font-size:14px;font-weight:500">Gerente</div>
+        <div style="font-size:11px;color:var(--text-sec)">Administrador</div>
+      </div>
+    </div>
+    <button onclick="logout()" style="font-size:12px;padding:6px 12px">Sair</button>
+  </div>
+  <div class="wrap" style="padding-top:1rem">
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('lancar')">Lançar frete</button>
+      <button class="tab" onclick="switchTab('importar')">Importar CSV</button>
+      <button class="tab" onclick="switchTab('motoristas')">Motoristas</button>
+      <button class="tab" onclick="switchTab('relatorio')">Relatório</button>
+    </div>
+
+    <!-- LANÇAR -->
+    <div id="tab-lancar">
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:1rem">Novo lançamento de frete</div>
+        <div id="lancar-alert"></div>
+        <div class="form-row">
+          <div><label>Motorista</label><select id="l-mot"><option value="">Selecione...</option></select></div>
+          <div><label>Data</label><input type="date" id="l-data"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Origem</label><input type="text" id="l-orig" placeholder="Ex: Recife"></div>
+          <div><label>Destino</label><input type="text" id="l-dest" placeholder="Ex: Caruaru"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Valor (R$)</label><input type="number" id="l-val" placeholder="0,00" min="0" step="0.01"></div>
+          <div><label>Status</label><select id="l-st"><option value="pendente">Pendente</option><option value="pago">Pago</option></select></div>
+        </div>
+        <div class="form-group"><label>Observação (opcional)</label><input type="text" id="l-obs" placeholder="Informação adicional"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-primary" id="btn-lancar" onclick="lancarFrete()">Salvar frete</button>
+          <button onclick="limparLancar()">Limpar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORTAR CSV -->
+    <div id="tab-importar" style="display:none">
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:8px">Importar fretes via CSV</div>
+        <p style="font-size:13px;color:var(--text-sec);margin-bottom:1rem">Colunas obrigatórias: <code style="font-size:12px;background:var(--bg-sec);padding:1px 5px;border-radius:4px">motorista, data, origem, destino, valor, status</code></p>
+        <div style="border:1.5px dashed var(--border-med);border-radius:var(--radius);padding:2rem;text-align:center;margin-bottom:1rem">
+          <p style="font-size:13px;color:var(--text-sec);margin-bottom:10px">Arraste ou selecione um arquivo .csv</p>
+          <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="previewCSV(event)">
+          <button onclick="document.getElementById('csv-file').click()">Selecionar arquivo</button>
+        </div>
+        <div id="csv-preview"></div>
+        <div id="csv-alert"></div>
+        <button class="btn-green" id="btn-import" style="display:none" onclick="importarCSV()">Importar registros</button>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:0.5px solid var(--border)">
+          <p style="font-size:12px;color:var(--text-sec);margin-bottom:6px">Não tem um modelo? Baixe aqui:</p>
+          <button onclick="baixarModelo()" style="font-size:12px">Baixar modelo.csv</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOTORISTAS -->
+    <div id="tab-motoristas" style="display:none">
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:1rem">Cadastrar motorista</div>
+        <div id="cad-alert"></div>
+        <div class="form-row">
+          <div><label>Nome completo</label><input type="text" id="m-nome" placeholder="Nome do motorista"></div>
+          <div><label>Usuário (login)</label><input type="text" id="m-user" placeholder="sem espaços"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Senha</label><input type="password" id="m-pass" placeholder="Mínimo 4 caracteres"></div>
+          <div><label>Telefone (opcional)</label><input type="text" id="m-tel" placeholder="(81) 99999-9999"></div>
+        </div>
+        <button class="btn-primary" id="btn-cad" onclick="cadastrarMotorista()">Cadastrar</button>
+      </div>
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:1rem">Motoristas cadastrados</div>
+        <div id="lista-mot"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIO -->
+    <div id="tab-relatorio" style="display:none">
+      <div class="card">
+        <div style="font-weight:500;margin-bottom:1rem">Relatório geral</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+          <div style="flex:1;min-width:120px"><label>De</label><input type="date" id="r-de" onchange="renderRelatorio()"></div>
+          <div style="flex:1;min-width:120px"><label>Até</label><input type="date" id="r-ate" onchange="renderRelatorio()"></div>
+          <div style="flex:1;min-width:130px"><label>Motorista</label><select id="r-mot" onchange="renderRelatorio()"><option value="">Todos</option></select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:1rem">
+          <div class="metric"><div class="metric-label">Total pago</div><div class="metric-value" id="r-pago" style="color:var(--green)">R$ 0</div></div>
+          <div class="metric"><div class="metric-label">Total pendente</div><div class="metric-value" id="r-pend" style="color:var(--amber-dark)">R$ 0</div></div>
+          <div class="metric"><div class="metric-label">Qtd. fretes</div><div class="metric-value" id="r-qtd">0</div></div>
+        </div>
+        <div id="rel-tabela"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ─── Estado global ───────────────────────────────────────────
+  let db, fns;
+  let currentUser = null;
+  let allMotoristas = [];
+  let allFretes = [];
+  let csvRows = [];
+
+  // ─── Aguardar Firebase ───────────────────────────────────────
+  function waitDB(cb) {
+    if (window._dbReady) { db = window._db; fns = window._fns; cb(); }
+    else document.addEventListener('db-ready', () => { db = window._db; fns = window._fns; cb(); });
+  }
+
+  waitDB(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    showPage('login');
+    verificarPrimeiroAcesso();
+  });
+
+  async function verificarPrimeiroAcesso() {
+    try {
+      const snap = await fns.getDocs(fns.collection(db, 'motoristas'));
+      if (snap.empty) {
+        // Cria admin padrão se banco estiver vazio
+        await fns.setDoc(fns.doc(db, 'config', 'admin'), { usuario: 'admin', senha: 'admin123' });
+      }
+    } catch(e) { console.log('Config check:', e.message); }
+  }
+
+  // ─── Utilidades ──────────────────────────────────────────────
+  function showPage(p) {
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    document.getElementById('page-' + p).classList.add('active');
+  }
+
+  function showAlert(id, msg, type) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+    setTimeout(() => { el.innerHTML = ''; }, 3500);
+  }
+
+  function setBtnLoading(id, loading, label) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="spinner"></span> Aguarde...` : label;
+  }
+
+  function fmtBRL(v) {
+    return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtData(d) { return d ? d.split('-').reverse().join('/') : '—'; }
+  function initials(nome) { return nome.split(' ').map(x => x[0]).slice(0, 2).join('').toUpperCase(); }
+  function today() { return new Date().toISOString().slice(0, 10); }
+  function mesAtual() { return new Date().toISOString().slice(0, 7); }
+
+  // ─── LOGIN ───────────────────────────────────────────────────
+  async function doLogin() {
+    const u = document.getElementById('login-user').value.trim();
+    const p = document.getElementById('login-pass').value;
+    if (!u || !p) { showAlert('login-alert', 'Preencha usuário e senha.', 'err'); return; }
+    setBtnLoading('btn-login', true, 'Entrar');
+    try {
+      // Verifica gerente
+      const adminDoc = await fns.getDoc(fns.doc(db, 'config', 'admin'));
+      if (adminDoc.exists()) {
+        const a = adminDoc.data();
+        if (u === a.usuario && p === a.senha) {
+          currentUser = { role: 'gerente' };
+          setBtnLoading('btn-login', false, 'Entrar');
+          await carregarDados();
+          showPage('gerente');
+          initGerente();
+          return;
+        }
+      }
+      // Verifica motorista
+      const snap = await fns.getDocs(fns.query(fns.collection(db, 'motoristas'), fns.where('usuario', '==', u)));
+      if (!snap.empty) {
+        const motDoc = snap.docs[0];
+        const mot = { id: motDoc.id, ...motDoc.data() };
+        if (mot.senha === p) {
+          currentUser = { role: 'motorista', mot };
+          setBtnLoading('btn-login', false, 'Entrar');
+          await carregarDados();
+          showPage('motorista');
+          initMotorista(mot);
+          return;
+        }
+      }
+      showAlert('login-alert', 'Usuário ou senha incorretos.', 'err');
+    } catch(e) {
+      showAlert('login-alert', 'Erro de conexão. Verifique o Firebase.', 'err');
+      console.error(e);
+    }
+    setBtnLoading('btn-login', false, 'Entrar');
+  }
+
+  function logout() {
+    currentUser = null;
+    allFretes = [];
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-pass').value = '';
+    showPage('login');
+  }
+
+  // ─── Carregar dados do Firestore ─────────────────────────────
+  async function carregarDados() {
+    const [mSnap, fSnap] = await Promise.all([
+      fns.getDocs(fns.collection(db, 'motoristas')),
+      fns.getDocs(fns.collection(db, 'fretes'))
+    ]);
+    allMotoristas = mSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allFretes = fSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allFretes.sort((a, b) => b.data.localeCompare(a.data));
+  }
+
+  // ─── MOTORISTA ───────────────────────────────────────────────
+  function initMotorista(mot) {
+    document.getElementById('mot-nome').textContent = mot.nome;
+    document.getElementById('mot-avatar').textContent = initials(mot.nome);
+    const mes = mesAtual();
+    const mesFretes = allFretes.filter(f => f.motId === mot.id && f.data.startsWith(mes));
+    document.getElementById('mot-total-mes').textContent = fmtBRL(mesFretes.reduce((s, f) => s + f.valor, 0));
+    document.getElementById('mot-qtd-mes').textContent = mesFretes.length;
+    const pend = allFretes.filter(f => f.motId === mot.id && f.status === 'pendente').reduce((s, f) => s + f.valor, 0);
+    document.getElementById('mot-pend').textContent = fmtBRL(pend);
+    // Defaults de filtro: mês atual
+    const fim = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().slice(0, 10);
+    document.getElementById('mot-de').value = mes + '-01';
+    document.getElementById('mot-ate').value = fim;
+    renderMotFretes();
+  }
+
+  function renderMotFretes() {
+    const mot = currentUser.mot;
+    const de = document.getElementById('mot-de').value;
+    const ate = document.getElementById('mot-ate').value;
+    const st = document.getElementById('mot-st').value;
+    let fretes = allFretes.filter(f => f.motId === mot.id);
+    if (de) fretes = fretes.filter(f => f.data >= de);
+    if (ate) fretes = fretes.filter(f => f.data <= ate);
+    if (st) fretes = fretes.filter(f => f.status === st);
+    const total = fretes.reduce((s, f) => s + f.valor, 0);
+    const el = document.getElementById('mot-tabela');
+    if (!fretes.length) { el.innerHTML = '<p style="text-align:center;color:var(--text-sec);padding:1.5rem;font-size:13px">Nenhum frete encontrado.</p>'; return; }
+    let h = '<div class="overflow-x"><table><thead><tr><th>Data</th><th>Rota</th><th>Valor</th><th>Status</th><th>Obs</th></tr></thead><tbody>';
+    fretes.forEach(f => {
+      const badge = f.status === 'pago' ? 'badge-ok' : 'badge-pend';
+      const label = f.status === 'pago' ? 'Pago' : 'Pendente';
+      h += `<tr><td style="white-space:nowrap">${fmtData(f.data)}</td><td style="white-space:nowrap">${f.origem} → ${f.destino}</td><td style="white-space:nowrap;font-weight:500">${fmtBRL(f.valor)}</td><td><span class="badge ${badge}">${label}</span></td><td style="color:var(--text-sec);font-size:12px">${f.obs || '—'}</td></tr>`;
+    });
+    h += `</tbody><tfoot><tr><td colspan="2" style="padding:8px 10px;font-size:12px;color:var(--text-sec)">Total filtrado</td><td style="padding:8px 10px;font-weight:500">${fmtBRL(total)}</td><td colspan="2"></td></tr></tfoot></table></div>`;
+    el.innerHTML = h;
+  }
+
+  function limparFiltroMot() {
+    document.getElementById('mot-de').value = '';
+    document.getElementById('mot-ate').value = '';
+    document.getElementById('mot-st').value = '';
+    renderMotFretes();
+  }
+
+  // ─── GERENTE ─────────────────────────────────────────────────
+  function initGerente() {
+    populateSelects();
+    document.getElementById('l-data').value = today();
+    renderListaMotoristas();
+    renderRelatorio();
+  }
+
+  function populateSelects() {
+    ['l-mot', 'r-mot'].forEach(id => {
+      const sel = document.getElementById(id);
+      const isRel = id === 'r-mot';
+      sel.innerHTML = isRel ? '<option value="">Todos</option>' : '<option value="">Selecione...</option>';
+      allMotoristas.forEach(m => { sel.innerHTML += `<option value="${m.id}">${m.nome}</option>`; });
+    });
+  }
+
+  function switchTab(t) {
+    ['lancar', 'importar', 'motoristas', 'relatorio'].forEach(x => {
+      document.getElementById('tab-' + x).style.display = x === t ? 'block' : 'none';
+    });
+    document.querySelectorAll('.tab-bar .tab').forEach((btn, i) => {
+      btn.classList.toggle('active', ['lancar', 'importar', 'motoristas', 'relatorio'][i] === t);
+    });
+    if (t === 'motoristas') renderListaMotoristas();
+    if (t === 'relatorio') renderRelatorio();
+  }
+
+  async function lancarFrete() {
+    const motId = document.getElementById('l-mot').value;
+    const data = document.getElementById('l-data').value;
+    const origem = document.getElementById('l-orig').value.trim();
+    const destino = document.getElementById('l-dest').value.trim();
+    const valor = parseFloat(document.getElementById('l-val').value);
+    const status = document.getElementById('l-st').value;
+    const obs = document.getElementById('l-obs').value.trim();
+    if (!motId || !data || !origem || !destino || isNaN(valor) || valor <= 0) {
+      showAlert('lancar-alert', 'Preencha todos os campos obrigatórios.', 'err'); return;
+    }
+    setBtnLoading('btn-lancar', true, 'Salvar frete');
+    try {
+      const ref = await fns.addDoc(fns.collection(db, 'fretes'), { motId, data, origem, destino, valor, status, obs, criadoEm: new Date().toISOString() });
+      allFretes.unshift({ id: ref.id, motId, data, origem, destino, valor, status, obs });
+      allFretes.sort((a, b) => b.data.localeCompare(a.data));
+      showAlert('lancar-alert', 'Frete lançado com sucesso!', 'ok');
+      limparLancar();
+    } catch(e) { showAlert('lancar-alert', 'Erro ao salvar: ' + e.message, 'err'); }
+    setBtnLoading('btn-lancar', false, 'Salvar frete');
+  }
+
+  function limparLancar() {
+    ['l-mot', 'l-orig', 'l-dest', 'l-val', 'l-obs'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('l-data').value = today();
+    document.getElementById('l-st').value = 'pendente';
+  }
+
+  async function cadastrarMotorista() {
+    const nome = document.getElementById('m-nome').value.trim();
+    const usuario = document.getElementById('m-user').value.trim().toLowerCase().replace(/\s/g, '');
+    const senha = document.getElementById('m-pass').value;
+    const tel = document.getElementById('m-tel').value.trim();
+    if (!nome || !usuario || senha.length < 4) { showAlert('cad-alert', 'Preencha nome, usuário e senha (mín. 4 caracteres).', 'err'); return; }
+    if (allMotoristas.find(m => m.usuario === usuario)) { showAlert('cad-alert', 'Esse usuário já existe.', 'err'); return; }
+    setBtnLoading('btn-cad', true, 'Cadastrar');
+    try {
+      const ref = await fns.addDoc(fns.collection(db, 'motoristas'), { nome, usuario, senha, tel, criadoEm: new Date().toISOString() });
+      allMotoristas.push({ id: ref.id, nome, usuario, senha, tel });
+      populateSelects();
+      renderListaMotoristas();
+      ['m-nome', 'm-user', 'm-pass', 'm-tel'].forEach(id => document.getElementById(id).value = '');
+      showAlert('cad-alert', 'Motorista cadastrado com sucesso!', 'ok');
+    } catch(e) { showAlert('cad-alert', 'Erro: ' + e.message, 'err'); }
+    setBtnLoading('btn-cad', false, 'Cadastrar');
+  }
+
+  function renderListaMotoristas() {
+    const el = document.getElementById('lista-mot');
+    if (!allMotoristas.length) { el.innerHTML = '<p style="color:var(--text-sec);font-size:13px">Nenhum motorista cadastrado.</p>'; return; }
+    let h = '<div class="overflow-x"><table><thead><tr><th>Nome</th><th>Usuário</th><th>Telefone</th><th>Fretes</th><th></th></tr></thead><tbody>';
+    allMotoristas.forEach(m => {
+      const qtd = allFretes.filter(f => f.motId === m.id).length;
+      h += `<tr><td>${m.nome}</td><td style="font-family:monospace;font-size:12px">${m.usuario}</td><td style="font-size:12px">${m.tel || '—'}</td><td>${qtd}</td><td><button onclick="removerMotorista('${m.id}')" style="font-size:11px;padding:3px 8px;color:var(--red);border-color:var(--red-light)">Remover</button></td></tr>`;
+    });
+    h += '</tbody></table></div>';
+    el.innerHTML = h;
+  }
+
+  async function removerMotorista(id) {
+    if (!confirm('Remover motorista? Os fretes dele não serão deletados.')) return;
+    try {
+      await fns.deleteDoc(fns.doc(db, 'motoristas', id));
+      allMotoristas = allMotoristas.filter(m => m.id !== id);
+      populateSelects();
+      renderListaMotoristas();
+    } catch(e) { alert('Erro ao remover: ' + e.message); }
+  }
+
+  function renderRelatorio() {
+    const de = document.getElementById('r-de').value;
+    const ate = document.getElementById('r-ate').value;
+    const motId = document.getElementById('r-mot').value;
+    let fretes = [...allFretes];
+    if (de) fretes = fretes.filter(f => f.data >= de);
+    if (ate) fretes = fretes.filter(f => f.data <= ate);
+    if (motId) fretes = fretes.filter(f => f.motId === motId);
+    const pago = fretes.filter(f => f.status === 'pago').reduce((s, f) => s + f.valor, 0);
+    const pend = fretes.filter(f => f.status === 'pendente').reduce((s, f) => s + f.valor, 0);
+    document.getElementById('r-pago').textContent = fmtBRL(pago);
+    document.getElementById('r-pend').textContent = fmtBRL(pend);
+    document.getElementById('r-qtd').textContent = fretes.length;
+    const el = document.getElementById('rel-tabela');
+    if (!fretes.length) { el.innerHTML = '<p style="text-align:center;color:var(--text-sec);padding:1.5rem;font-size:13px">Nenhum frete no período.</p>'; return; }
+    let h = '<div class="overflow-x"><table><thead><tr><th>Data</th><th>Motorista</th><th>Rota</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>';
+    fretes.forEach(f => {
+      const mot = allMotoristas.find(m => m.id === f.motId);
+      const nome = mot ? mot.nome.split(' ')[0] : '(removido)';
+      const badge = f.status === 'pago' ? 'badge-ok' : 'badge-pend';
+      const label = f.status === 'pago' ? 'Pago' : 'Pendente';
+      const btnLabel = f.status === 'pago' ? '↩ Pendente' : '✓ Pago';
+      h += `<tr><td style="white-space:nowrap">${fmtData(f.data)}</td><td>${nome}</td><td style="white-space:nowrap;font-size:12px">${f.origem} → ${f.destino}</td><td style="white-space:nowrap;font-weight:500">${fmtBRL(f.valor)}</td><td><span class="badge ${badge}">${label}</span></td><td><button onclick="toggleStatus('${f.id}')" style="font-size:11px;padding:3px 8px">${btnLabel}</button></td></tr>`;
+    });
+    h += '</tbody></table></div>';
+    el.innerHTML = h;
+  }
+
+  async function toggleStatus(id) {
+    const f = allFretes.find(x => x.id === id);
+    if (!f) return;
+    const novoStatus = f.status === 'pago' ? 'pendente' : 'pago';
+    try {
+      await fns.updateDoc(fns.doc(db, 'fretes', id), { status: novoStatus });
+      f.status = novoStatus;
+      renderRelatorio();
+    } catch(e) { alert('Erro: ' + e.message); }
+  }
+
+  // ─── CSV ──────────────────────────────────────────────────────
+  function previewCSV(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const lines = ev.target.result.trim().split('\n');
+      csvRows = [];
+      const header = lines[0].split(',').map(x => x.trim().toLowerCase());
+      const ci = { motorista: header.indexOf('motorista'), data: header.indexOf('data'), origem: header.indexOf('origem'), destino: header.indexOf('destino'), valor: header.indexOf('valor'), status: header.indexOf('status') };
+      let erros = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const p = lines[i].split(',').map(x => x.trim());
+        if (p.length < 4) continue;
+        const nomeMot = p[ci.motorista] || '';
+        const mot = allMotoristas.find(m => m.nome.toLowerCase() === nomeMot.toLowerCase());
+        if (!mot) erros++;
+        csvRows.push({ ok: !!mot, nomeMot, motId: mot ? mot.id : null, data: p[ci.data] || '', origem: p[ci.origem] || '', destino: p[ci.destino] || '', valor: parseFloat((p[ci.valor] || '0').replace(',', '.')), status: (p[ci.status] || 'pendente').toLowerCase() });
+      }
+      let h = `<p style="font-size:13px;margin-bottom:8px;color:var(--text-sec)">${csvRows.length} registros${erros ? ` — <span style="color:var(--red)">${erros} motorista(s) não encontrado(s)</span>` : ''}</p>`;
+      h += '<div class="overflow-x"><table><thead><tr><th>Motorista</th><th>Data</th><th>Rota</th><th>Valor</th><th>Status</th><th></th></tr></thead><tbody>';
+      csvRows.forEach(r => {
+        const badge = r.ok ? 'badge-ok' : 'badge-err';
+        h += `<tr><td>${r.nomeMot}</td><td>${r.data}</td><td style="font-size:12px">${r.origem} → ${r.destino}</td><td>${fmtBRL(r.valor)}</td><td style="font-size:12px">${r.status}</td><td><span class="badge ${badge}">${r.ok ? 'OK' : 'Erro'}</span></td></tr>`;
+      });
+      h += '</tbody></table></div>';
+      document.getElementById('csv-preview').innerHTML = h;
+      document.getElementById('btn-import').style.display = csvRows.filter(r => r.ok).length > 0 ? 'inline-block' : 'none';
+    };
+    reader.readAsText(file);
+  }
+
+  async function importarCSV() {
+    const validos = csvRows.filter(r => r.ok && r.data && r.origem && r.destino && !isNaN(r.valor) && r.valor > 0);
+    setBtnLoading('btn-import', true, 'Importar registros');
+    try {
+      for (const r of validos) {
+        const ref = await fns.addDoc(fns.collection(db, 'fretes'), { motId: r.motId, data: r.data, origem: r.origem, destino: r.destino, valor: r.valor, status: r.status, obs: '', criadoEm: new Date().toISOString() });
+        allFretes.unshift({ id: ref.id, ...r });
+      }
+      allFretes.sort((a, b) => b.data.localeCompare(a.data));
+      showAlert('csv-alert', `${validos.length} fretes importados com sucesso!`, 'ok');
+      document.getElementById('csv-preview').innerHTML = '';
+      document.getElementById('csv-file').value = '';
+      csvRows = [];
+    } catch(e) { showAlert('csv-alert', 'Erro na importação: ' + e.message, 'err'); }
+    setBtnLoading('btn-import', false, 'Importar registros');
+  }
+
+  function baixarModelo() {
+    const csv = 'motorista,data,origem,destino,valor,status\nJoão Silva,2026-04-13,Recife,Caruaru,320.00,pago\nMaria Souza,2026-04-13,Recife,Natal,580.00,pendente';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'modelo_fretes.csv';
+    a.click();
+  }
+
+  // ─── Enter no login ──────────────────────────────────────────
+  ['login-user', 'login-pass'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  });
+</script>
+</body>
+</html>
